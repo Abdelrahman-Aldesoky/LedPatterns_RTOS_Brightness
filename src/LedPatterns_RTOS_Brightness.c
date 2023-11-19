@@ -17,7 +17,7 @@ int main(void)
 	LED_voidInit();
 	USART_u8SetCallBack(LED_voidCheckState);
 
-	xTaskCreate(LED_voidActivatePattern, NULL, 200, NULL, 1, NULL);
+	xTaskCreate(LED_voidActivatePattern, NULL, 200, NULL, 5, NULL);
 
 	vTaskStartScheduler();
 	while (1)

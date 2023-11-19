@@ -4,6 +4,11 @@
 /****************Date:17/08/2023.****************/
 /************************************************/
 
+/*in order to use variable delay when compiling on newest version of
+avr-gcc hence on linux not windows i need to use this
+#define __DELAY_BACKWARD_COMPATIBLE__*/
+#define __DELAY_BACKWARD_COMPATIBLE__
+
 #include "../inc/STD_TYPES.h"
 #include "../inc/BIT_MATH.h"
 #include "DIO_interface.h"
@@ -11,6 +16,7 @@
 #include "LED_private.h"
 #include "LED_config.h"
 #include "LED_interface.h"
+#include "util/delay.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -25,9 +31,10 @@ you can check the struct in LED_interface.h File*/
 LedPattern Patterns[] =
 	{
 		/*index 0 in my array of structs will contain the off signal default behaviour*/
-		{0, 1000, {0, -1}},
+		{0, 0, {0, -1}},
+
 		/*index 1 in my array of structs contains flashing pattern with 500ms delay.*/
-		{1, 500, {255, 0, -1}},
+		{0, 500, {255, 0, -1}},
 
 		/*index 2 in my array of structs contains moving left with 250ms delay.*/
 		{0, 250, {128, 64, 32, 16, 8, 4, 2, 1, -1}},
@@ -39,16 +46,19 @@ LedPattern Patterns[] =
 		{0, 300, {24, 36, 66, 129, -1}},
 
 		/*index 5, Two LEDs diverging with 300ms delay.*/
-		{0, 250, {129, 66, 36, 24, -1}},
+		{0, 300, {129, 66, 36, 24, -1}},
 
 		/*index 6, Ping Pong with 250ms delay.*/
-		{0, 300, {2, 8, 32, 128, 64, 16, 4, 1, -1}},
+		{0, 250, {2, 8, 32, 128, 64, 16, 4, 1, -1}},
 
 		/*index 7, Snake effect with 300ms delay.*/
 		{0, 300, {224, 112, 56, 28, 14, 7, 131, 193, -1}},
 
 		/*index 8, converging and diverging with 300ms delay.*/
-		{0, 300, {129, 195, 231, 255, 255, 231, 195, -1}}};
+		{0, 300, {129, 195, 231, 255, 255, 231, 195, -1}},
+
+		/*index 9, all LEDs go from dim to bright and from bright to dim*/
+		{1, 1000, {255, 0, -1}}};
 
 void LED_voidInit(void)
 {
@@ -66,47 +76,60 @@ void LED_voidCheckState(void)
 my lEDs should be animating.*/
 void LED_voidActivatePattern(void *ptr)
 {
-	/*just a variable for future use if needed in case of a condition
-	 *that tells me i can only show the patterns that is higher in the index and not lower.*/
+	/*Variable to hold my current active pattern or state.*/
 	u8 static Local_u8ActiveLEDsState = 0;
-	/*Variable to hold my pattern Length*/
-	u8 static Local_u8PatternLength = 0;
-	/*Getting the total number of my patterns instead of hardcoding it*/
+
+	/*Iterator to go over the whole choosen pattern depends on how long is the pattern*/
+	u8 static Local_u8Iterator = 0;
+
+	u8 static Local_u8BrightnessDelay = 0;
+
+	/*Time Elapsed variable to compare for the actual delay needed for every pattern*/
+	u16 static Local_u16ElapsedTime = 0;
+
+	/*Getting the total number of my patterns instead of hardcoding it so if you add another pattern
+	 *automatically Calculates the Total number of patterns*/
 	u8 static const Local_u8TotalNoOfPatterns = sizeof(Patterns) / sizeof(Patterns[0]);
 
 	while (1)
 	{
-		/*if Received state same as active state keep the pattern displayed*/
-		if (Global_u8ReceivedState == Local_u8ActiveLEDsState)
+		if (Global_u8ReceivedState != Local_u8ActiveLEDsState)
 		{
-			/*for loop to display "turn on LEDs" based on the received pattern with the correct delay*/
-			for (u8 Local_u8Iterator = 0; Local_u8Iterator < Local_u8PatternLength; Local_u8Iterator++)
-			{
-				DIO_voidSetPortValue(LED_PORT, Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator]);
-				for (u8 j = Patterns[Local_u8ActiveLEDsState].brightness; j < 255 && j != 0; j++)
-				{
-					DIO_voidSetPortValue(LED_PORT, ~(Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator]));
-					vTaskDelay(j);
-				}
-				vTaskDelay(Patterns[Local_u8ActiveLEDsState].delay);
-			}
-		} /*if received pattern is one of the patterns in my array of structs
-			 changed the active state and update the pattern length for correctness of display*/
-		else if (Global_u8ReceivedState < Local_u8TotalNoOfPatterns && Global_u8ReceivedState >= 0)
-		{
-			Local_u8PatternLength = 0;
 			Local_u8ActiveLEDsState = Global_u8ReceivedState;
-			/*Getting the Actual Pattern Length for the choosen Pattern*/
-			while ((Patterns[Local_u8ActiveLEDsState].pattern[Local_u8PatternLength]) != -1)
+			Local_u8Iterator = 0;
+			Local_u16ElapsedTime = 0;
+		}
+		if (Local_u16ElapsedTime >= Patterns[Local_u8ActiveLEDsState].delay)
+		{
+			Local_u8Iterator++;
+			Local_u16ElapsedTime = 0;
+		}
+		if (Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator] == -1)
+		{
+			Local_u8Iterator = 0;
+		}
+
+		DIO_voidSetPortValue(LED_PORT, Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator]);
+
+		if (Patterns[Local_u8ActiveLEDsState].brightness)
+		{
+			if (DIO_u8GetPinValue(LED_PORT, PIN0))
 			{
-				Local_u8PatternLength++;
+				DIO_voidSetPortValue(LED_PORT, PORT_VALUE_LOW);
+				Local_u16ElapsedTime += 10;
+				vTaskDelay(10);
 			}
-		} /*if none of the above must be an error turn all the lEDs on*/
+			else
+			{
+				DIO_voidSetPortValue(LED_PORT, PORT_VALUE_HIGH);
+				Local_u16ElapsedTime += 10;
+				vTaskDelay(10);
+			}
+		}
 		else
 		{
-			/*error pattern*/
-			DIO_voidSetPortValue(LED_PORT, PORT_VALUE_HIGH);
+			Local_u16ElapsedTime++;
+			vTaskDelay(1);
 		}
-		vTaskDelay(1);
 	}
 }

@@ -1,0 +1,15 @@
+#ignore all files even in sub directories
+*
+
+#except .c and .cpp files and .gitignore make files etc
+!*.c
+!*.cpp
+!*.h
+!*.gitignore
+!Makefile
+!makefile
+!config.mk
+!*.md
+
+# ...even if they are in subdirectories
+!*/

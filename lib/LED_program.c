@@ -4,11 +4,6 @@
 /****************Date:17/08/2023.****************/
 /************************************************/
 
-/*in order to use variable delay when compiling on newest version of
-avr-gcc hence on linux not windows i need to use this
-#define __DELAY_BACKWARD_COMPATIBLE__*/
-#define __DELAY_BACKWARD_COMPATIBLE__
-
 #include "../inc/STD_TYPES.h"
 #include "../inc/BIT_MATH.h"
 #include "DIO_interface.h"
@@ -16,7 +11,6 @@ avr-gcc hence on linux not windows i need to use this
 #include "LED_private.h"
 #include "LED_config.h"
 #include "LED_interface.h"
-#include "util/delay.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -57,8 +51,9 @@ LedPattern Patterns[] =
 		/*index 8, converging and diverging with 300ms delay.*/
 		{0, 300, {129, 195, 231, 255, 255, 231, 195, -1}},
 
-		/*index 9, all LEDs go from dim to bright and from bright to dim*/
-		{1, 1000, {255, 0, -1}}};
+		/*index 9, all LEDs half brightness then turn off and so on*/
+		{20, 1000, {255, 0, -1}},
+};
 
 void LED_voidInit(void)
 {
@@ -81,8 +76,6 @@ void LED_voidActivatePattern(void *ptr)
 
 	/*Iterator to go over the whole choosen pattern depends on how long is the pattern*/
 	u8 static Local_u8Iterator = 0;
-
-	u8 static Local_u8BrightnessDelay = 0;
 
 	/*Time Elapsed variable to compare for the actual delay needed for every pattern*/
 	u16 static Local_u16ElapsedTime = 0;
@@ -108,26 +101,17 @@ void LED_voidActivatePattern(void *ptr)
 		{
 			Local_u8Iterator = 0;
 		}
-
-		DIO_voidSetPortValue(LED_PORT, Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator]);
-
-		if (Patterns[Local_u8ActiveLEDsState].brightness)
+		if (Patterns[Local_u8ActiveLEDsState].brightness && Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator])
 		{
-			if (DIO_u8GetPinValue(LED_PORT, PIN0))
-			{
-				DIO_voidSetPortValue(LED_PORT, PORT_VALUE_LOW);
-				Local_u16ElapsedTime += 10;
-				vTaskDelay(10);
-			}
-			else
-			{
-				DIO_voidSetPortValue(LED_PORT, PORT_VALUE_HIGH);
-				Local_u16ElapsedTime += 10;
-				vTaskDelay(10);
-			}
+			DIO_voidSetPortValue(LED_PORT, (Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator]));
+			vTaskDelay((Patterns[Local_u8ActiveLEDsState].brightness * (50 / 100)));
+			DIO_voidSetPortValue(LED_PORT, ~(Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator]));
+			vTaskDelay((Patterns[Local_u8ActiveLEDsState].brightness * (50 / 100)));
+			Local_u16ElapsedTime += Patterns[Local_u8ActiveLEDsState].brightness;
 		}
 		else
 		{
+			DIO_voidSetPortValue(LED_PORT, (Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator]));
 			Local_u16ElapsedTime++;
 			vTaskDelay(1);
 		}

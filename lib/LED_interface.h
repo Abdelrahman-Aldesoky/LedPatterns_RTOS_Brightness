@@ -12,7 +12,7 @@
 /*Struct for my patterns it contains array for the pattern and its corrsponding delay*/
 typedef struct
 {
-    u16 brightness;
+    u8 brightness;
     u16 delay;
     s16 pattern[MAX_PATTERN_LENGTH];
 } LedPattern;

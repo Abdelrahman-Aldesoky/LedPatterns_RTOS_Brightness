@@ -13,13 +13,19 @@
 
 int main(void)
 {
+	/*Initialize USART for interrupts and 9600 baud rate */
 	USART_voidInit();
+	/*Initialize LEDs Port as output*/
 	LED_voidInit();
+	/*Set my USART call back function to check the char Received it only interrupts upon Receiving new char*/
 	USART_u8SetCallBack(LED_voidCheckState);
 
+	/*Create an Rtos Task*/
 	xTaskCreate(LED_voidActivatePattern, NULL, 200, NULL, 5, NULL);
 
+	/*Start Rtos*/
 	vTaskStartScheduler();
+
 	while (1)
 	{
 	}

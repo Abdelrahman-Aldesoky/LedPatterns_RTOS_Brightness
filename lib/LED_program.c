@@ -88,7 +88,7 @@ void LED_voidActivatePattern(void *ptr)
 
 	/*Getting the total number of my patterns instead of hardcoding it*/
 	u8 static const Local_u8TotalNoOfPatterns = sizeof(Patterns) / sizeof(Patterns[0]);
-
+	u8 static counter = 0;
 	while (1)
 	{
 		/*If user choose new pattern apply it under the next conditions
@@ -121,20 +121,20 @@ void LED_voidActivatePattern(void *ptr)
 
 		if (Patterns[Local_u8ActiveLEDsState].brightness)
 		{
-			u8 static counter = 0;
-			if (counter < Patterns[Local_u8ActiveLEDsState].brightness)
+			u8 ontime = ((Local_u16ElapsedTime * Patterns[Local_u8ActiveLEDsState].brightness) / Patterns[Local_u8ActiveLEDsState].delay);
+			if (counter < ontime)
 			{
 				DIO_voidSetPortValue(LED_PORT, Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator]);
 			}
-			else if (counter < 255)
+			else
 			{
 				DIO_voidSetPortValue(LED_PORT, ~(Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator]));
 			}
-			else
+			counter++;
+			if (counter >= Patterns[Local_u8ActiveLEDsState].brightness)
 			{
 				counter = 0;
 			}
-			counter++;
 		}
 		else
 		{

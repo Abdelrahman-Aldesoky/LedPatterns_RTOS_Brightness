@@ -58,7 +58,7 @@ LedPattern Patterns[] =
 		{0, 300, {129, 195, 231, 255, 255, 231, 195, EOP}},
 
 		/*index 9, brightening and dimming slowly according to the gradient steps*/
-		{20, 1000, {0, 255, EOP}}};
+		{14, 1000, {0, 255, EOP}}};
 
 void LED_voidInit(void)
 {

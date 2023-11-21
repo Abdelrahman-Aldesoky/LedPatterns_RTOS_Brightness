@@ -19,13 +19,10 @@ int main(void)
 	LED_voidInit();
 	/*Set my USART call back function to check the char Received it only interrupts upon Receiving new char*/
 	USART_u8SetCallBack(LED_voidCheckState);
-
 	/*Create an Rtos Task*/
 	xTaskCreate(LED_voidActivatePattern, NULL, 200, NULL, 5, NULL);
-
 	/*Start Rtos*/
 	vTaskStartScheduler();
-
 	while (1)
 	{
 	}

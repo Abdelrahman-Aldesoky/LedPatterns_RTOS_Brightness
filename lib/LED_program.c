@@ -57,7 +57,7 @@ LedPattern Patterns[] =
 		/*index 8, converging and diverging with 300ms delay.*/
 		{0, 300, {129, 195, 231, 255, 255, 231, 195, EOP}},
 
-		/*index 9, brightening and dimming slowly*/
+		/*index 9, brightening and dimming slowly according to the gradient steps*/
 		{20, 1000, {0, 255, EOP}}};
 
 void LED_voidInit(void)
@@ -73,80 +73,95 @@ void LED_voidCheckState(void)
 }
 
 /*My main Function that acts upon my global variable that holds what state
-my lEDs should be animating.*/
+my LEDs should be animating.*/
 void LED_voidActivatePattern(void *ptr)
 {
-	/*just a variable for future use if needed in case of a condition
-	 *that tells me i can only show the patterns that is higher in the index and not lower.*/
+	/* Local_u8ActiveLEDsState holds the index of the currently active LED pattern. */
 	u8 static Local_u8ActiveLEDsState = 0;
 
-	/*Iterator to go over the whole choosen pattern depends on how long is the pattern*/
+	/* Local_u8Iterator is used to iterate over the elements of pattern array of the currently active pattern. */
 	u8 static Local_u8Iterator = 0;
 
-	/*Elapsed_time Variable to check if reached the correct delay to start on the next sequence in the Pattern*/
+	/* Local_u16ElapsedTime measures the time that has passed since the last pattern change. It's increased every millisecond. */
 	u16 static Local_u16ElapsedTime = 0;
 
-	/*Getting the total number of my patterns instead of hardcoding it*/
+	/* Local_u8TotalNoOfPatterns holds the total number of available LED patterns. */
 	u8 static const Local_u8TotalNoOfPatterns = sizeof(Patterns) / sizeof(Patterns[0]);
-	u8 static counter = 0;
+
+	/* Local_u8StepsCounter is used to count the gradient steps for the brightening and dimming effect. */
+	u8 static Local_u8StepsCounter = 0;
+
+	/* Local_u8OnTimeDuration calculates the duration for which the LED should be on during each gradient step. */
+	u8 Local_u8OnTimeDuration = 0;
 	while (1)
 	{
-		/*If user choose new pattern apply it under the next conditions
-		 *it must be higher in the index number
-		 *Pattern index must exist in my Pattern struct array
-		 *user can reset by choosing the default off pattern which is index 0
-		 *it also starts the new choosen pattern from the start by reseting everything to zero */
+		/* The VALID_LED_PATTERN macro checks if the user's chosen pattern
+		 * (Global_u8ReceivedState) is valid for activation. There are three conditions
+		 * for a pattern to be considered valid:
+		 * 1. The chosen pattern index (Global_u8ReceivedState) should be greater than
+		 *    the index of the currently active pattern (Local_u8ActiveLEDsState). This
+		 *    means that the user can only switch to a pattern with a higher index number.
+		 * 2. The chosen pattern index should be less than the total number of available
+		 *    patterns (Local_u8TotalNoOfPatterns). This ensures that the user doesn't
+		 *    choose a pattern index that is out of bounds.
+		 * 3. The chosen pattern index can be 0. This is because pattern 0 is the default
+		 *    off pattern, which allows the user to reset the LED state.
+		 * If any of these conditions are met, the macro returns true, indicating that
+		 * the chosen pattern is valid. */
 		if (VALID_LED_PATTERN)
 		{
+			/*This line sets the currently active LED pattern to the user's chosen pattern. */
 			Local_u8ActiveLEDsState = Global_u8ReceivedState;
+			/* This line resets the Iterator for the pattern array if the pattern changes. */
 			Local_u8Iterator = 0;
+			/* This line resets the elapsed time if the pattern changes. */
 			Local_u16ElapsedTime = 0;
 		}
 
-		/*if the the current pattern[Local_u8Iterator] reached its appointed delay
-		 *if an element from the pattern array is done in plain english words elapsed time reached delay
-		 *Reset elapsed time variable to start over on the next element in the array by increasing the iterator*/
+		/* This If condition checks if the elapsed time has reached the delay time of the current pattern element.
+		 * If so, it moves to the next element in the pattern by increasing the iterator and resets the elapsed time. */
 		if (Local_u16ElapsedTime == Patterns[Local_u8ActiveLEDsState].delay)
 		{
 			Local_u8Iterator++;
 			Local_u16ElapsedTime = 0;
 		}
 
-		/*If at End Of Pattern marked by EOP or -1 actual value start over
-		 *Repeat the pattern by going to index 0 in the pattern array.*/
+		/* This if condition checks if the iterator has reached the end of the pattern (marked by EOP or -1).
+		 * You can Check EOP in my Private file.
+		 * If so, it resets the iterator to start the pattern from the beginning and so on. */
 		if (Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator] == EOP)
 		{
 			Local_u8Iterator = 0;
 		}
 
-		if (Patterns[Local_u8ActiveLEDsState].brightness)
+		/* Local_u8OnTimeDuration calculates the on-time duration for each gradient step. */
+		/* If the number of gradient steps is 0, the LED displays the pattern at full brightness without any gradient effect. */
+		Local_u8OnTimeDuration = ((Local_u16ElapsedTime *
+								   Patterns[Local_u8ActiveLEDsState].GradientSteps) /
+								  Patterns[Local_u8ActiveLEDsState].delay);
+
+		/*software PWM kinda with the complement*/
+		if (Local_u8StepsCounter < Local_u8OnTimeDuration)
 		{
-			u8 ontime = ((Local_u16ElapsedTime * Patterns[Local_u8ActiveLEDsState].brightness) / Patterns[Local_u8ActiveLEDsState].delay);
-			if (counter < ontime)
-			{
-				DIO_voidSetPortValue(LED_PORT, Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator]);
-			}
-			else
-			{
-				DIO_voidSetPortValue(LED_PORT, ~(Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator]));
-			}
-			counter++;
-			if (counter >= Patterns[Local_u8ActiveLEDsState].brightness)
-			{
-				counter = 0;
-			}
+			DIO_voidSetPortValue(LED_PORT, ~(Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator]));
 		}
 		else
 		{
-			/*After all the check are done Just Display the Active Pattern*/
 			DIO_voidSetPortValue(LED_PORT, Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator]);
 		}
 
-		/*increase my elapsed time by 1ms*/
+		/* The steps counter is incremented after each iteration. */
+		Local_u8StepsCounter++;
+
+		/* If the steps counter reaches the total number of gradient steps, it's reset to 0. */
+		if (Local_u8StepsCounter >= Patterns[Local_u8ActiveLEDsState].GradientSteps)
+		{
+			Local_u8StepsCounter = 0;
+		}
+
+		/* Increase the elapsed time by 1ms and put the task to sleep for 1ms.
+		 * This allows for 1ms checks if the pattern has changed or not. */
 		Local_u16ElapsedTime++;
-		/*Let the task go to sleep for 1ms, this and elapsed time should be the same
-		 *also this allows for 1ms checks if pattern changed or not but with higher cpu usage.
-		 *and more code for the manual for loop by if conditions.*/
 		vTaskDelay(1);
 	}
 }

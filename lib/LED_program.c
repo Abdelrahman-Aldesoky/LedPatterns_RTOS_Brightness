@@ -42,17 +42,17 @@ LedPattern Patterns[] =
 		/*index 3 in my array of structs contains moving right with 250ms delay.*/
 		{0, 250, {1, 2, 4, 8, 16, 32, 64, 128, EOP}},
 
-		/*index 4, Two LEDs converging with 300ms delay.*/
+		/*index 4, Snake effect with 300ms delay.*/
+		{2, 300, {224, 112, 56, 28, 14, 7, 131, 193, EOP}},
+
+		/*index 5, Two LEDs converging with 300ms delay.*/
 		{0, 300, {24, 36, 66, 129, EOP}},
 
-		/*index 5, Two LEDs diverging with 300ms delay.*/
+		/*index 6, Two LEDs diverging with 300ms delay.*/
 		{0, 250, {129, 66, 36, 24, EOP}},
 
-		/*index 6, Ping Pong with 250ms delay.*/
+		/*index 7, Ping Pong with 250ms delay.*/
 		{0, 300, {2, 8, 32, 128, 64, 16, 4, 1, EOP}},
-
-		/*index 7, Snake effect with 300ms delay.*/
-		{0, 300, {224, 112, 56, 28, 14, 7, 131, 193, EOP}},
 
 		/*index 8, converging and diverging with 300ms delay.*/
 		{0, 300, {129, 195, 231, 255, 255, 231, 195, EOP}},
@@ -143,7 +143,14 @@ void LED_voidActivatePattern(void *ptr)
 		/*software PWM kinda with the complement*/
 		if (Local_u8StepsCounter < Local_u8OnTimeDuration)
 		{
-			DIO_voidSetPortValue(LED_PORT, ~(Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator]));
+			if(Patterns[Local_u8ActiveLEDsState].GradientSteps <=2)
+			{
+				DIO_voidSetPortValue(LED_PORT, PORT_VALUE_LOW);
+			}
+			else
+			{
+				DIO_voidSetPortValue(LED_PORT, ~(Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator]));
+			}
 		}
 		else
 		{

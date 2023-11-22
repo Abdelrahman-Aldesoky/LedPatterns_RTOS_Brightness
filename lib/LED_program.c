@@ -43,7 +43,7 @@ LedPattern Patterns[] =
 		{0, 250, {1, 2, 4, 8, 16, 32, 64, 128, EOP}},
 
 		/*index 4, Snake effect with 300ms delay.*/
-		{2, 300, {224, 112, 56, 28, 14, 7, 131, 193, EOP}},
+		{3, 300, {224, 112, 56, 28, 14, 7, 131, 193, EOP}},
 
 		/*index 5, Two LEDs converging with 300ms delay.*/
 		{0, 300, {24, 36, 66, 129, EOP}},
@@ -143,7 +143,7 @@ void LED_voidActivatePattern(void *ptr)
 		/*software PWM kinda with the complement*/
 		if (Local_u8StepsCounter < Local_u8OnTimeDuration)
 		{
-			if(Patterns[Local_u8ActiveLEDsState].GradientSteps <=2)
+			if (Patterns[Local_u8ActiveLEDsState].GradientSteps <= 3)
 			{
 				DIO_voidSetPortValue(LED_PORT, PORT_VALUE_LOW);
 			}

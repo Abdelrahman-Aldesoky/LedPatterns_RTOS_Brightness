@@ -128,8 +128,11 @@ void LED_voidActivatePattern(void *ptr)
 		{
 			Local_u8Iterator++;
 			Local_u16ElapsedTime = 0;
-			dimmest = (dimmest >> 1) | ((dimmest & 0b00000001) << 7);
-			dim = (dim >> 1) | ((dim & 0b00000001) << 7);
+			if (Local_u8ActiveLEDsState == 4)
+			{
+				dimmest = (dimmest >> 1) | ((dimmest & 0b00000001) << 7);
+				dim = (dim >> 1) | ((dim & 0b00000001) << 7);
+			}
 		}
 
 		/* This if condition checks if the iterator has reached the end of the pattern (marked by EOP or -1).
@@ -157,7 +160,7 @@ void LED_voidActivatePattern(void *ptr)
 			{
 				DIO_voidSetPortValue(LED_PORT, Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator] & dimmest);
 			}
-			else if (Local_u8StepsCounter == 10)
+			else if (Local_u8StepsCounter == 5)
 			{
 				DIO_voidSetPortValue(LED_PORT, Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator] & dim);
 			}

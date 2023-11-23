@@ -43,7 +43,7 @@ LedPattern Patterns[] =
 		{0, 250, {1, 2, 4, 8, 16, 32, 64, 128, EOP}},
 
 		/*index 4, Snake effect with 300ms delay.*/
-		{3, 300, {224, 112, 56, 28, 14, 7, 131, 193, EOP}},
+		{20, 1000, {224, 112, 56, 28, 14, 7, 131, 193, EOP}},
 
 		/*index 5, Two LEDs converging with 300ms delay.*/
 		{0, 300, {24, 36, 66, 129, EOP}},
@@ -93,6 +93,10 @@ void LED_voidActivatePattern(void *ptr)
 
 	/* Local_u8OnTimeDuration calculates the duration for which the LED should be on during each gradient step. */
 	u8 Local_u8OnTimeDuration = 0;
+
+	u8 static dimmest = 0b01111111;
+	u8 static dim = 0b00111111;
+
 	while (1)
 	{
 		/* The VALID_LED_PATTERN macro checks if the user's chosen pattern
@@ -124,6 +128,8 @@ void LED_voidActivatePattern(void *ptr)
 		{
 			Local_u8Iterator++;
 			Local_u16ElapsedTime = 0;
+			dimmest = (dimmest >> 1) | ((dimmest & 0b00000001) << 7);
+			dim = (dim >> 1) | ((dim & 0b00000001) << 7);
 		}
 
 		/* This if condition checks if the iterator has reached the end of the pattern (marked by EOP or -1).
@@ -140,23 +146,34 @@ void LED_voidActivatePattern(void *ptr)
 								   Patterns[Local_u8ActiveLEDsState].GradientSteps) /
 								  Patterns[Local_u8ActiveLEDsState].delay);
 
-		/*software PWM kinda with the complement*/
-		if (Local_u8StepsCounter < Local_u8OnTimeDuration)
+		/*Just A cheat for pattern 4 not scalable not generic*/
+		if (Local_u8ActiveLEDsState == 4)
 		{
-			if (Patterns[Local_u8ActiveLEDsState].GradientSteps <= 3)
+			if (Local_u8StepsCounter == 0)
 			{
-				DIO_voidSetPortValue(LED_PORT, PORT_VALUE_LOW);
+				DIO_voidSetPortValue(LED_PORT, Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator]);
 			}
-			else
+			else if (Local_u8StepsCounter == 1)
 			{
-				DIO_voidSetPortValue(LED_PORT, ~(Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator]));
+				DIO_voidSetPortValue(LED_PORT, Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator] & dimmest);
+			}
+			else if (Local_u8StepsCounter == 10)
+			{
+				DIO_voidSetPortValue(LED_PORT, Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator] & dim);
 			}
 		}
 		else
-		{
-			DIO_voidSetPortValue(LED_PORT, Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator]);
-		}
+		{ /*software PWM to dim and brighten the LEDs also works for the normal patterns since the gradient = 0 so full brightness*/
 
+			if (Local_u8StepsCounter < Local_u8OnTimeDuration)
+			{
+				DIO_voidSetPortValue(LED_PORT, ~(Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator]));
+			}
+			else
+			{
+				DIO_voidSetPortValue(LED_PORT, Patterns[Local_u8ActiveLEDsState].pattern[Local_u8Iterator]);
+			}
+		}
 		/* The steps counter is incremented after each iteration. */
 		Local_u8StepsCounter++;
 

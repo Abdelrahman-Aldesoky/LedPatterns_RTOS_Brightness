@@ -94,6 +94,7 @@ void LED_voidActivatePattern(void *ptr)
 	/* Local_u8OnTimeDuration calculates the duration for which the LED should be on during each gradient step. */
 	u8 Local_u8OnTimeDuration = 0;
 
+	/*variables for pattern 4 to make LEDs varying brightness*/
 	u8 static dimmest = 0b01111111;
 	u8 static dim = 0b00111111;
 
@@ -120,6 +121,11 @@ void LED_voidActivatePattern(void *ptr)
 			Local_u8Iterator = 0;
 			/* This line resets the elapsed time if the pattern changes. */
 			Local_u16ElapsedTime = 0;
+			if (Local_u8ActiveLEDsState == 4)
+			{
+				dimmest = 0b01111111;
+				dim = 0b00111111;
+			}
 		}
 
 		/* This If condition checks if the elapsed time has reached the delay time of the current pattern element.
